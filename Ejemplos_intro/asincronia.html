@@ -1,0 +1,48 @@
+<html>
+<script>
+
+
+function f1() {
+  console.log("Soy la primera función");
+  
+}
+
+/*
+function f2(){ //f2 sincrona
+  pause(10000) 
+  console.log("Soy la segunda función")
+}*/
+
+
+function f2() {        //f2 asincrona
+  setTimeout(function() { console.log("Soy la segunda función")}, 10000);
+  //setTimeout(miFuncion,10000); //llama a la función callback tras 6 segundos
+}
+/*
+function miFuncion(){
+  console.log("Soy la segunda función");
+}*/
+
+
+function f3() {
+  console.log("Soy la tercera función")
+}
+
+function pause(milliseconds) { //función no asíncrona
+	var dt = new Date(); 
+	while ((new Date()) - dt <= milliseconds) {  }
+}
+
+
+f1();
+f2();
+f3();
+
+
+</script>
+
+
+
+
+
+</html>
