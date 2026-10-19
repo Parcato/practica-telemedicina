@@ -43,6 +43,27 @@
         <section id="vista-inicio" class="hidden">
             <p><strong>INICIO</strong></p>
             <p>Bienvenido <span id="nombre-gestor"></span> <button onclick="abrirEdicion()">Editar datos</button></p>
+            <input type="text" id="texto-area" placeholder="p.e San blás"> 
+            <input  type="text" id="postal" placeholder="codigo">
+            <button onclick="creararea()">Crear area</button>
+
+            <!-- Botón para enviar al Ministerio -->
+        <button onclick="enviarMinisterio()">Enviar datos al Ministerio</button>
+
+        <!-- Tabla del Ranking -->
+        <h3>Ranking por área médica<button onclick="cargarRanking()">🔄 Actualizar Ranking</button></h3>
+        <table id="tabla-ranking">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Área Médica</th>
+                    <th>Reservas Totales</th>
+                </tr>
+            </thead>
+            <tbody id="cuerpo-ranking">
+                <!-- Aquí se pintarán las filas automáticamente -->
+            </tbody>
+        </table>
 
             <h3>Búsqueda de recursos</h3>
             <div class="grid-campos">
@@ -64,7 +85,8 @@
             <button onclick="abrir(null)">Añadir Recurso</button>
             <!-- Salir cierra el WebSocket antes de recargar -->
             <div class="derecha"><button onclick="salirGestor()">Salir</button></div>
-
+            
+            
             <!-- TABLA DE AVISOS WebSocket -->
             <h3>Avisos</h3>
             <table style="width:100%">
@@ -92,6 +114,11 @@
                 </select>
             </div>
             <button onclick="guardarRecurso()">Guardar</button>
+            <!----Para practicar-->
+            <input type="text" id="texto-reporte" placeholder="Descripción del reporte"> 
+            <input type="number" id="gravedad-reporte" placeholder="Gravedad (1-3)" min="1" max="3">
+            <button onclick="crearReporte()">Crear area</button>
+            <!----Para practicar-->
 
             <h4>Reservas</h4>
             <table id="tabla-reservas">
@@ -111,6 +138,140 @@
 
 <script src="ws_cliente.js"></script>  <!-- NUEVO -->
 <script>
+    // Nombres de las áreas según el enunciado de la práctica
+var areas = {
+    1: "Alergología", 2: "Anestesiología", 3: "Cardiología",
+    4: "Cirugía General", 5: "Dermatología", 6: "Aparato Digestivo",
+    7: "Endocrinología", 8: "Ginecología", 9: "Hematología",
+    10: "Medicina Interna", 11: "Neumología", 12: "Neurología",
+    13: "Oftalmología", 14: "Oncología", 15: "Pediatría",
+    16: "Psiquiatría", 17: "Traumatología", 18: "Urología"
+};
+    async function enviarMinisterio() {
+    try {
+        // 1. Obtener todos los recursos del servidor
+        const resRecursos = await fetchAutenticado('/api/recursos');
+        if (!resRecursos.ok) {
+            alert("No se pudieron obtener los recursos");
+            return;
+        }
+        const recursos = await resRecursos.json();
+
+        // 2. Recorrer cada recurso para obtener sus reservas y unirlas en un solo array
+        var todasLasReservas = [];
+        for (var i = 0; i < recursos.length; i++) {
+            var recursoId = recursos[i].id;
+            var resResv = await fetchAutenticado('/api/recursos/' + recursoId + '/reservas');
+            if (resResv.ok) {
+                var reservasRecurso = await resResv.json();
+                todasLasReservas = todasLasReservas.concat(reservasRecurso);
+            }
+        }
+
+        if (todasLasReservas.length === 0) {
+            alert("No hay reservas registradas para enviar.");
+            return;
+        }
+
+        // 3. Mapear las reservas al formato que pide el Ministerio
+        var datos = todasLasReservas.map(function(r) {
+            return {
+                nombre: r.nombre_sanitario || "",
+                apellidos: r.apellidos_sanitario || "",
+                categoria: r.categoria || "",
+                horas_estimadas: r.h_estim,
+                fec_pet: r.f_peticion,
+                fec_ini: r.f_inicio,
+                fecha_fin: r.f_fin
+            };
+        });
+
+        // 4. Construir el objeto JSON fijando el id_area a 6
+        var hoy = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
+        var body = {
+            id_area: 6, // Fijo a 6 como pediste
+            fecha: hoy,
+            datos: datos
+        };
+
+        // 5. Enviar mediante POST a la API del Ministerio
+        const res = await fetchAutenticado('https://undefined.ua.es/telemedicina/api/datos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+
+        if (res.ok) {
+            alert("Datos enviados al Ministerio correctamente");
+            cargarRanking(); // Actualizar el ranking automáticamente
+        } else {
+            alert("Error al enviar los datos al Ministerio");
+        }
+    } catch (error) {
+        console.error("Error en enviarMinisterio:", error);
+        alert("Ocurrió un error al procesar las reservas.");
+    }
+}
+
+async function cargarRanking() {
+    try {
+        const res = await fetchAutenticado('https://undefined.ua.es/telemedicina/api/datos', {
+            method: 'GET'
+        });
+        if (!res.ok) {
+            console.error("No se pudo obtener el ranking");
+            return;
+        }
+        const respuesta = await res.json();
+
+        // Contar el total de reservas agrupadas por id_area (filtrando solo áreas del 1 al 18)
+        var conteo = {};
+        
+        respuesta.forEach(function(item) {
+            var idArea = parseInt(item.id_area);
+            
+            // Solo procesamos si el id_area está entre las áreas oficiales de la práctica
+            if (areas[idArea]) {
+                if (!conteo[idArea]) {
+                    conteo[idArea] = 0;
+                }
+                if (item.datos && Array.isArray(item.datos)) {
+                    conteo[idArea] += item.datos.length;
+                }
+            }
+        });
+
+        // Ordenar las áreas de mayor a menor número de reservas
+        var ordenado = Object.keys(conteo).sort(function(a, b) {
+            return conteo[b] - conteo[a];
+        });
+
+        var tbody = document.getElementById("cuerpo-ranking");
+        tbody.innerHTML = "";
+
+        if (ordenado.length === 0) {
+            tbody.innerHTML = "<tr><td colspan='3'>No hay datos disponibles en el ranking</td></tr>";
+            return;
+        }
+
+        // Rellenar la tabla dinámicamente con medallas para los primeros puestos
+        ordenado.forEach(function(idArea, i) {
+            var fila = document.createElement("tr");
+            var medalla = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : (i + 1);
+            
+            var nombreArea = areas[idArea];
+
+            fila.innerHTML = `
+                <td>${medalla}</td>
+                <td>${nombreArea}</td>
+                <td>${conteo[idArea]}</td>
+            `;
+            tbody.appendChild(fila);
+        });
+    } catch (error) {
+        console.error("Error al obtener el ranking del ministerio:", error);
+    }
+}
     var listaCategorias = [], listaModelos = [], listaUbicaciones = [];
     var idGestorLogueado = null;
     var nomGestorLogueado = null;
@@ -148,7 +309,7 @@
 
     async function abrirEdicion() {
         // Edición del gestor con sesión iniciada: precargamos sus datos actuales
-        const res = await fetch('/api/gestores/' + idGestorLogueado);
+        const res = await fetchAutenticado('/api/gestores/' + idGestorLogueado);
         const g = await res.json();
         document.getElementById('r-user').value = g.usuario;
         document.getElementById('r-pass').value = "";
@@ -156,6 +317,30 @@
         document.getElementById('r-apell').value = g.apellidos;
         mostrar('vista-registro');
     }
+    async function fetchAutenticado(url, options = {}) {
+    // 1. Asegurarnos de que las opciones y las cabeceras existan
+    if (!options.headers) {
+        options.headers = {};
+    }
+    
+    // 2. Recuperar el token JWT del localStorage
+    const token = localStorage.getItem('token_gestor');
+    if (token) {
+        options.headers['Authorization'] = 'Bearer ' + token;
+    }
+
+    // 3. ¡IMPORTANTE! Aquí se llama al 'fetch' nativo del navegador, NO a fetchAutenticado
+    const response = await fetch(url, options);
+
+    // 4. Si el token caduca o no es válido
+    if (response.status === 401 || response.status === 403) {
+        alert("Sesión caducada o no autorizada. Por favor, inicia sesión de nuevo.");
+        localStorage.removeItem('token_gestor');
+        location.reload();
+    }
+
+    return response;
+}
 
     async function guardarGestor() {
         const body = {
@@ -169,7 +354,7 @@
         const url    = editando ? '/api/gestores/' + idGestorLogueado : '/api/gestores';
         const metodo = editando ? 'PUT' : 'POST';
 
-        const res = await fetch(url, {
+        const res = await fetchAutenticado(url, {
             method:  metodo,
             headers: {'Content-Type': 'application/json'},
             body:    JSON.stringify(body)
@@ -194,38 +379,53 @@
         mostrar(idGestorLogueado !== null ? 'vista-inicio' : 'vista-login');
     }
 
-    async function login() {
-        const u = document.getElementById('l-user').value;
-        const p = document.getElementById('l-pass').value;
-        const res = await fetch('/api/gestores/login', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({login: u, password: p})
-        });
-        if (res.ok) {
-            const id = await res.json();
-            idGestorLogueado = id;
-            const resG = await fetch('/api/gestores/' + id);
+  var tokenJWT = localStorage.getItem('token_gestor') || null;
+
+async function login() {
+    const u = document.getElementById('l-user').value;
+    const p = document.getElementById('l-pass').value;
+    
+    const res = await fetch('/api/gestores/login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({login: u, password: p})
+    });
+    
+    if (res.ok) {
+        const respuesta = await res.json();
+        
+        // 🔑 Guardamos el token JWT (asegúrate de que sea respuesta.token o respuesta según lo que devuelva tu servidor)
+        localStorage.setItem('token_gestor', respuesta.token);
+        idGestorLogueado = respuesta.id;
+
+        // Usamos fetchAutenticado para las siguientes peticiones protegidas
+        const resG = await fetchAutenticado('/api/gestores/' + idGestorLogueado);
+        if (resG.ok) {
             const gestor = await resG.json();
             nomGestorLogueado = gestor.nombre + " " + gestor.apellidos;
             document.getElementById('nombre-gestor').innerText = nomGestorLogueado;
-
-            // Conectar WebSocket al hacer login correcto
-            wsCliente.conectar("gestor", id, nomGestorLogueado, mostrarAviso);
-
-            await cargarDatosMaestros();
-            mostrar('vista-inicio');
-            buscarRecursos();
-        } else {
-            alert("Usuario o contraseña incorrectos");
         }
+
+        // Conectar WebSocket si procede
+        if (typeof wsCliente !== 'undefined' && wsCliente.conectar) {
+            wsCliente.conectar("gestor", idGestorLogueado, nomGestorLogueado, mostrarAviso);
+        }
+
+        await cargarDatosMaestros();
+        await cargarRanking(); // Parte 1
+
+        mostrar('vista-inicio');
+        buscarRecursos();
+    } else {
+        alert("Usuario o contraseña incorrectos");
     }
+}
 
     async function cargarDatosMaestros() {
         const [c, m, u] = await Promise.all([
-            fetch('/api/categorias'),
-            fetch('/api/modelos'),
-            fetch('/api/ubicaciones')
+            fetchAutenticado('/api/categorias'),
+            fetchAutenticado('/api/modelos'),
+            fetchAutenticado('/api/ubicaciones')
         ]);
         listaCategorias = await c.json();
         listaModelos    = await m.json();
@@ -260,7 +460,7 @@
         const u = document.getElementById('f-ubi').value;
         const m = document.getElementById('f-mod').value;
         const e = document.getElementById('f-estado').value;
-        const res = await fetch(`/api/recursos?categoria=${c}&ubicacion=${u}&modelo=${m}&estado=${e}`);
+        const res = await fetchAutenticado(`/api/recursos?categoria=${c}&ubicacion=${u}&modelo=${m}&estado=${e}`);
         const recursos = await res.json();
         const tbody = document.getElementById('tabla-recursos');
         tbody.innerHTML = "";
@@ -291,7 +491,7 @@
         listaCategorias.forEach(x => sC.innerHTML += `<option value="${x.id}">${x.nombre}</option>`);
 
         if (id) {
-            const res = await fetch('/api/recursos/' + id);
+            const res = await fetchAutenticado('/api/recursos/' + id);
             const r = await res.json();
             document.getElementById('f-id').value = r.id;
             document.getElementById('f-serie').value = r.numero_serie;
@@ -326,7 +526,7 @@
     }
 
 async function cargarTablasFicha(recursoId) {
-    const resReservas = await fetch('/api/recursos/' + recursoId + '/reservas');
+    const resReservas = await fetchAutenticado('/api/recursos/' + recursoId + '/reservas');
     const reservas = resReservas.ok ? await resReservas.json() : [];
     const tRes = document.querySelector('#tabla-reservas tbody');
     tRes.innerHTML = "";
@@ -350,7 +550,7 @@ async function cargarTablasFicha(recursoId) {
         color = "#d4f8d4"; // Verde: reserva pendiente de que se libere el recurso
     }
     
-    fetch('/api/sanitarios/' + r.sanitario)
+    fetchAutenticado('/api/sanitarios/' + r.sanitario)
         .then(rs => rs.ok ? rs.json() : null)
         .then(function(s) {
             var fila = document.createElement("tr");
@@ -366,7 +566,7 @@ async function cargarTablasFicha(recursoId) {
         });
 });
 
-    const resResenas = await fetch('/api/recursos/' + recursoId + '/resenyas');
+    const resResenas = await fetchAutenticado('/api/recursos/' + recursoId + '/resenyas');
     const resenas = resResenas.ok ? await resResenas.json() : [];
     const tRev = document.querySelector('#tabla-resenas tbody');
     tRev.innerHTML = "";
@@ -403,7 +603,7 @@ function mensajesanitario(sani, valoracion, comentario) {
             ubicacion:    parseInt(document.getElementById('f-ubi-ficha').value),
             estado:       parseInt(document.getElementById('f-estado-ficha').value) // esto 
         };
-        const res = await fetch(id ? '/api/recursos/' + id : '/api/recursos', {
+        const res = await fetchAutenticado(id ? '/api/recursos/' + id : '/api/recursos', {
             method:  id ? 'PUT' : 'POST',
             headers: {'Content-Type': 'application/json'},
             body:    JSON.stringify(body)
@@ -444,7 +644,7 @@ function mensajesanitario(sani, valoracion, comentario) {
 
     async function eliminar(id) {
         if (confirm("¿Seguro que desea eliminar este recurso?")) {
-            const res= await fetch('/api/recursos/' + id,);
+            const res= await fetchAutenticado('/api/recursos/' + id,);
             const r = await res.json();
             const mod = listaModelos.find(x => x.id == r.modelo);
             const cat = listaCategorias.find(x => x.id == (mod ? mod.categoria : null));
@@ -459,7 +659,36 @@ function mensajesanitario(sani, valoracion, comentario) {
         }
     }
     
-
+    //para practicar
+    async function crearReporte() {
+    const res = await fetchAutenticado('/api/reportes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            descripcion: document.getElementById('texto-reporte').value,
+            gravedad: document.getElementById('gravedad-reporte').value,
+            gestor: idGestorLogueado,
+            recurso: document.getElementById('f-id').value
+        })
+    });
+    if (res.ok) alert("Reporte creado correctamente");
+    else alert("Error");
+}
+//para practicar
+    async function creararea() {
+    const res = await fetchAutenticado('/api/area_salud', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            nombre: document.getElementById('texto-area').value,
+            codigopostal:document.getElementById('postal').value,
+            gestor: idGestorLogueado
+            
+        })
+    });
+    if (res.ok) alert("Reporte creado correctamente");
+    else alert("Error");
+}
 
 </script>
 </body>
