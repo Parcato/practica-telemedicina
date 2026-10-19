@@ -1,17 +1,21 @@
 {
-  "name": "practicassd",
+  "name": "practica-telemedicina",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "Gestor de recursos de telemedicina (REST, RPC y WebSocket)",
+  "main": "servidor.js",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node servidor.js"
   },
-  "keywords": [],
-  "author": "",
+  "engines": {
+    "node": ">=20"
+  },
   "license": "ISC",
-  "description": "",
   "dependencies": {
+    "cors": "^2.8.6",
     "express": "^5.2.1",
-    "mysql": "^2.18.1",
-    "node": "^25.6.0"
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.13.0",
+    "ws": "^8.20.0"
   }
 }
