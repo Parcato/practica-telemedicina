@@ -147,9 +147,13 @@ var areas = {
     13: "Oftalmología", 14: "Oncología", 15: "Pediatría",
     16: "Psiquiatría", 17: "Traumatología", 18: "Urología"
 };
-    async function enviarMinisterio() {
+   const URL_MINISTERIO = "https://undefined.ua.es/telemedicina/api/datos"; // confirmar con el profesor
+
+async function enviarMinisterio() {
+    const boton = document.getElementById("btn-ministerio");
+    boton.disabled = true; // evita envíos duplicados
     try {
-        // 1. Obtener todos los recursos del servidor
+        // 1. Recursos del servidor (con token: es nuestro servidor)
         const resRecursos = await fetchAutenticado('/api/recursos');
         if (!resRecursos.ok) {
             alert("No se pudieron obtener los recursos");
@@ -157,14 +161,12 @@ var areas = {
         }
         const recursos = await resRecursos.json();
 
-        // 2. Recorrer cada recurso para obtener sus reservas y unirlas en un solo array
-        var todasLasReservas = [];
-        for (var i = 0; i < recursos.length; i++) {
-            var recursoId = recursos[i].id;
-            var resResv = await fetchAutenticado('/api/recursos/' + recursoId + '/reservas');
+        // 2. Reservas de cada recurso
+        let todasLasReservas = [];
+        for (const recurso of recursos) {
+            const resResv = await fetchAutenticado('/api/recursos/' + recurso.id + '/reservas');
             if (resResv.ok) {
-                var reservasRecurso = await resResv.json();
-                todasLasReservas = todasLasReservas.concat(reservasRecurso);
+                todasLasReservas = todasLasReservas.concat(await resResv.json());
             }
         }
 
@@ -173,103 +175,89 @@ var areas = {
             return;
         }
 
-        // 3. Mapear las reservas al formato que pide el Ministerio
-        var datos = todasLasReservas.map(function(r) {
-            return {
-                nombre: r.nombre_sanitario || "",
-                apellidos: r.apellidos_sanitario || "",
-                categoria: r.categoria || "",
-                horas_estimadas: r.h_estim,
-                fec_pet: r.f_peticion,
-                fec_ini: r.f_inicio,
-                fecha_fin: r.f_fin
-            };
-        });
+        // 3. Formato que pide el Ministerio
+        const datos = todasLasReservas.map(r => ({
+            nombre: r.nombre_sanitario || "",
+            apellidos: r.apellidos_sanitario || "",
+            categoria: r.categoria || "",
+            horas_estimadas: r.h_estim,
+            fec_pet: r.f_peticion,
+            fec_ini: r.f_inicio,
+            fecha_fin: r.f_fin // puede ser null si la reserva sigue en curso
+        }));
 
-        // 4. Construir el objeto JSON fijando el id_area a 6
-        var hoy = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
-        var body = {
-            id_area: 6, // Fijo a 6 como pediste
-            fecha: hoy,
+        // 4. Fecha local en formato YYYY-MM-DD
+        const body = {
+            id_area: 6,
+            fecha: new Date().toLocaleDateString('sv-SE'),
             datos: datos
         };
 
-        // 5. Enviar mediante POST a la API del Ministerio
-        const res = await fetchAutenticado('https://undefined.ua.es/telemedicina/api/datos', {
+        // 5. POST sin token: la petición va al Ministerio, no a nuestro servidor
+        const res = await fetch(URL_MINISTERIO, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
 
-        if (res.ok) {
-            alert("Datos enviados al Ministerio correctamente");
-            cargarRanking(); // Actualizar el ranking automáticamente
-        } else {
-            alert("Error al enviar los datos al Ministerio");
+        if (!res.ok) {
+            const texto = await res.text();
+            alert("Error del Ministerio: " + res.status + " " + texto);
+            return;
         }
+
+        alert("Datos enviados al Ministerio correctamente");
+        await cargarRanking();
     } catch (error) {
         console.error("Error en enviarMinisterio:", error);
-        alert("Ocurrió un error al procesar las reservas.");
+        alert("Ocurrió un error al enviar: " + error.message);
+    } finally {
+        boton.disabled = false;
     }
 }
 
 async function cargarRanking() {
+    const tbody = document.getElementById("cuerpo-ranking");
     try {
-        const res = await fetchAutenticado('https://undefined.ua.es/telemedicina/api/datos', {
-            method: 'GET'
-        });
+        // GET sin token: petición al Ministerio
+        const res = await fetch(URL_MINISTERIO);
         if (!res.ok) {
-            console.error("No se pudo obtener el ranking");
+            tbody.innerHTML = "<tr><td colspan='3'>No se pudo obtener el ranking (" + res.status + ")</td></tr>";
             return;
         }
         const respuesta = await res.json();
+        console.log("Respuesta del Ministerio:", respuesta); // comprobar la estructura real
 
-        // Contar el total de reservas agrupadas por id_area (filtrando solo áreas del 1 al 18)
-        var conteo = {};
-        
-        respuesta.forEach(function(item) {
-            var idArea = parseInt(item.id_area);
-            
-            // Solo procesamos si el id_area está entre las áreas oficiales de la práctica
-            if (areas[idArea]) {
-                if (!conteo[idArea]) {
-                    conteo[idArea] = 0;
-                }
-                if (item.datos && Array.isArray(item.datos)) {
-                    conteo[idArea] += item.datos.length;
-                }
+        // Contar reservas por id_area (solo áreas 1 a 18)
+        const conteo = {};
+        respuesta.forEach(item => {
+            const idArea = parseInt(item.id_area);
+            if (areas[idArea] && Array.isArray(item.datos)) {
+                conteo[idArea] = (conteo[idArea] || 0) + item.datos.length;
             }
         });
 
-        // Ordenar las áreas de mayor a menor número de reservas
-        var ordenado = Object.keys(conteo).sort(function(a, b) {
-            return conteo[b] - conteo[a];
-        });
+        // Ordenar de mayor a menor
+        const ordenado = Object.keys(conteo).sort((a, b) => conteo[b] - conteo[a]);
 
-        var tbody = document.getElementById("cuerpo-ranking");
         tbody.innerHTML = "";
-
         if (ordenado.length === 0) {
             tbody.innerHTML = "<tr><td colspan='3'>No hay datos disponibles en el ranking</td></tr>";
             return;
         }
 
-        // Rellenar la tabla dinámicamente con medallas para los primeros puestos
-        ordenado.forEach(function(idArea, i) {
-            var fila = document.createElement("tr");
-            var medalla = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : (i + 1);
-            
-            var nombreArea = areas[idArea];
-
+        ordenado.forEach((idArea, i) => {
+            const medalla = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : (i + 1);
+            const fila = document.createElement("tr");
             fila.innerHTML = `
                 <td>${medalla}</td>
-                <td>${nombreArea}</td>
-                <td>${conteo[idArea]}</td>
-            `;
+                <td>${areas[idArea]}</td>
+                <td>${conteo[idArea]}</td>`;
             tbody.appendChild(fila);
         });
     } catch (error) {
-        console.error("Error al obtener el ranking del ministerio:", error);
+        console.error("Error al obtener el ranking:", error);
+        tbody.innerHTML = "<tr><td colspan='3'>Error al cargar el ranking: " + error.message + "</td></tr>";
     }
 }
     var listaCategorias = [], listaModelos = [], listaUbicaciones = [];
