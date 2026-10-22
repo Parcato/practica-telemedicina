@@ -273,11 +273,15 @@ async function cargarRanking() {
     if (!res.ok) throw new Error("Error GET: " + res.status);
     const datos = await res.json();
 
-    const totalconunsolareserva = datos.filter(item =>
-        Array.isArray(item.datos) && item.datos.length === 1
+    const area = Number(document.getElementById("tieneunasolareservas").value);
+
+    const total = datos.filter(item =>
+        item.id_area === area &&
+        Array.isArray(item.datos) &&
+        item.datos.length === 1
     ).length;
 
-    alert("El número de posts hechos con una sola reserva es " + totalconunsolareserva);
+    alert("El número de posts del área " + area + " con una sola reserva es " + total);
 }
         
 
