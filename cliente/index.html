@@ -49,10 +49,7 @@
 
             <!-- Botón para enviar al Ministerio -->
         <button onclick="enviarMinisterio()">Enviar datos al Ministerio</button>
-        <input type = "number" id = "tieneunasolareservas" placeholder = "Una sola reserva">
-        <button onclick = "unaReserva()">Número de reservas que tienen solo una reserva</button>
 
-        <button onclick = "mediahorasestimadasarea_9()">Media horas estimadas</button>
         <!-- Tabla del Ranking -->
         <h3>Ranking por área médica<button onclick="cargarRanking()">🔄 Actualizar Ranking</button></h3>
         <table id="tabla-ranking">
@@ -218,8 +215,6 @@ async function enviarMinisterio() {
         boton.disabled = false;
     }
 }
-as
-
 
 async function cargarRanking() {
     const tbody = document.getElementById("cuerpo-ranking");
@@ -264,50 +259,7 @@ async function cargarRanking() {
         console.error("Error al obtener el ranking:", error);
         tbody.innerHTML = "<tr><td colspan='3'>Error al cargar el ranking: " + error.message + "</td></tr>";
     }
-
-}
-    //Numero de post hechos con una sola reserva subida
-
- async function unaReserva() {
-    const res = await fetch(URL_MINISTERIO);
-    if (!res.ok) throw new Error("Error GET: " + res.status);
-    const datos = await res.json();
-
-    const area = Number(document.getElementById("tieneunasolareservas").value);
-
-    const total = datos.filter(item =>
-        item.id_area === area &&
-        Array.isArray(item.datos) &&
-        item.datos.length === 1
-    ).length;
-
-    alert("El número de posts del área " + area + " con una sola reserva es " + total);
-}
-        
-
-
-        
-        
-
-    async function mediahorasestimadasarea_9() {
-        const res = await fetch(URL_MINISTERIO);
-        if (!res.ok) throw new Error("Error GET: " + res.status);
-        const datos = await res.json();
-        let area = 9;
-        let totalHoras = 0;
-        datos.forEach(item => {
-            if (parseInt(item.id_area) === area) {
-                item.datos.forEach(reserva => {
-                    totalHoras += reserva.horas_estimadas;
-                });
-            }
-        });
-        alert("la meedia de horas estimadas del area de "+areas[area] + " es " + totalHoras / datos.length);
-
-    }
- 
-/*
-
+}   /*
     Cuenta el número total de reservas consultando el Ministerio.
     async function totalReservas() {
     const res = await fetch(URL_MINISTERIO);
