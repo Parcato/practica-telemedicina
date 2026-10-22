@@ -50,7 +50,7 @@
             <!-- Botón para enviar al Ministerio -->
         <button onclick="enviarMinisterio()">Enviar datos al Ministerio</button>
         <input type = "number" id = "tieneunasolareservas" placeholder = "Una sola reserva">
-        <button on click = "unaReserva()">Cuantas reservas?</button>
+        <button onclick = "unaReserva()">Número de reservas que tienen solo una reserva</button>
 
         <button onclick = "mediahorasestimadasarea_9()">Media horas estimadas</button>
         <!-- Tabla del Ranking -->
@@ -272,11 +272,23 @@ async function cargarRanking() {
         const res = await fetch(URL_MINISTERIO);
         if (!res.ok) throw new Error("Error GET: " + res.status);
         const datos = await res.json();
-        let total = 0;
-        datos.forEach(item => { total += item.datos.length; });
-        document.getElementById("tieneunasolareservas").value = total;
-       alert("hay " + total+ " registros que tienen una sola reserva");
+        let area = document.getElementById("tieneunasolareservas").value;
+        let registros = 0;
+        datos.forEach(item => {
+            if (parseInt(item.id_area) === area) {
+                item.datos.forEach(reserva => {
+                    if (registros === 0) {
+                        registros++;
+                    } else {
+                        registros = 0;
+                    }
+                });
+            }
+        });
+
+        alert("hay " + registros + " registros que tienen una sola reserva");
     }
+        
 
     async function mediahorasestimadasarea_9() {
         const res = await fetch(URL_MINISTERIO);
@@ -291,7 +303,7 @@ async function cargarRanking() {
                 });
             }
         });
-        alert("la meedia de horas estimadas del area de "+areas[area] + " es " + round(totalHoras / datos.length, 2));
+        alert("la meedia de horas estimadas del area de "+areas[area] + " es " + totalHoras / datos.length);
 
     }
  
