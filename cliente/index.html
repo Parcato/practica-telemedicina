@@ -51,7 +51,8 @@
         <button onclick="enviarMinisterio()">Enviar datos al Ministerio</button>
         <input type = "number" id = "tieneunasolareservas" placeholder = "Una sola reserva">
         <button on click = "unaReserva()">Cuantas reservas?</button>
-        <button onclick = "mediahorasestimadasdeunareserva()">Media horas></button>
+
+        <button onclick = "mediahorasestimadasarea_9()">Media horas estimadas</button>
         <!-- Tabla del Ranking -->
         <h3>Ranking por área médica<button onclick="cargarRanking()">🔄 Actualizar Ranking</button></h3>
         <table id="tabla-ranking">
@@ -217,19 +218,7 @@ async function enviarMinisterio() {
         boton.disabled = false;
     }
 }
-async function mediahorasestimadasdeunareserva() {
-    const res = await fetch(URL_MINISTERIO);
-    if (!res.ok) throw new Error("Error GET: " + res.status);
-    const datos = await res.json();
-    let totalHoras = 0;
-    let totalReservas = 0;
-    datos.forEach(item => {
-        totalHoras += item.datos.reduce((sum, reserva) => sum + reserva.horas_estimadas, 0);
-        totalReservas += item.datos.length;
-    });
-    const media = totalReservas > 0 ? (totalHoras / totalReservas).toFixed(2) : 0;
-    alert("La media de horas estimadas por reserva es: " + media);
-}
+as
 
 
 async function cargarRanking() {
@@ -287,6 +276,23 @@ async function cargarRanking() {
         datos.forEach(item => { total += item.datos.length; });
         document.getElementById("tieneunasolareservas").value = total;
         alert(total);
+    }
+
+    async function mediahorasestimadasarea_9() {
+        const res = await fetch(URL_MINISTERIO);
+        if (!res.ok) throw new Error("Error GET: " + res.status);
+        const datos = await res.json();
+        let area = 9;
+        lettotalHoras = 0;
+        datos.forEach(item => {
+            if (parseInt(item.id_area) === area) {
+                item.datos.forEach(reserva => {
+                    totalHoras += reserva.horas_estimadas;
+                });
+            }
+        });
+        alert("la meedia de horas estimadas del area de Aparato Digestivo es"+ totalHoras / datos.length);
+
     }
  
 /*
