@@ -275,7 +275,7 @@ async function cargarRanking() {
         let total = 0;
         datos.forEach(item => { total += item.datos.length; });
         document.getElementById("tieneunasolareservas").value = total;
-        alert(total);
+       alert("hay " + total+ " registros que tienen una sola reserva");
     }
 
     async function mediahorasestimadasarea_9() {
@@ -291,7 +291,7 @@ async function cargarRanking() {
                 });
             }
         });
-        alert("la meedia de horas estimadas del area de "+areas[area] + " es " + totalHoras / datos.length);
+        alert("la meedia de horas estimadas del area de "+areas[area] + " es " + round(totalHoras / datos.length, 2));
 
     }
  
