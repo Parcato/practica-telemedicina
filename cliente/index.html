@@ -49,7 +49,8 @@
 
             <!-- Botón para enviar al Ministerio -->
         <button onclick="enviarMinisterio()">Enviar datos al Ministerio</button>
-
+        <input type = "number" id = "tieneunasolareservas" placeholder = "Una sola reserva">
+        <button on click = "unaReserva()">Cuantas reservas?</button>
         <!-- Tabla del Ranking -->
         <h3>Ranking por área médica<button onclick="cargarRanking()">🔄 Actualizar Ranking</button></h3>
         <table id="tabla-ranking">
@@ -259,7 +260,76 @@ async function cargarRanking() {
         console.error("Error al obtener el ranking:", error);
         tbody.innerHTML = "<tr><td colspan='3'>Error al cargar el ranking: " + error.message + "</td></tr>";
     }
+
 }
+    //Numero de registros que tienen solo una reserva
+
+    async function unaReserva() {
+        const res = await fetch(URL_MINISTERIO);
+        if (!res.ok) throw new Error("Error GET: " + res.status);
+        const datos = await res.json();
+        let total = 0;
+        datos.forEach(item => { total += item.datos.length; });
+        document.getElementById("tieneunasolareservas").value = total;
+    }
+ 
+/*
+
+    Cuenta el número total de reservas consultando el Ministerio.
+    async function totalReservas() {
+    const res = await fetch(URL_MINISTERIO);
+    if (!res.ok) throw new Error("Error GET: " + res.status);
+    const datos = await res.json();
+    let total = 0;
+    datos.forEach(item => { total += item.datos.length; });
+    return total;
+}
+    */
+
+    /*
+    Cuenta el número de reservas para un área específica (idArea) consultando el Ministerio.
+    async function reservasArea(idArea) {
+    const res = await fetch(URL_MINISTERIO);
+    const datos = await res.json();
+    return datos
+        .filter(item => parseInt(item.id_area) === idArea)
+        .reduce((total, item) => total + item.datos.length, 0);
+
+ Cuenta el área con más reservas consultando el Ministerio.
+async function areaMasReservas() {
+    const res = await fetch(URL_MINISTERIO);
+    if (!res.ok) return null;
+    const datos = await res.json();
+    let mejor = null;
+    datos.forEach(item => {
+        if (mejor === null || item.datos.length > mejor.datos.length) mejor = item;
+    });
+    return mejor ? parseInt(mejor.id_area) : null;
+}
+    async function postMinimo() {
+    const body = {
+        id_area: 15,
+        fecha: "2026-10-20",
+        datos: [{
+            nombre: "María",
+            apellidos: "Gómez Gómez",
+            categoria: "Termómetro",
+            horas_estimadas: 2,
+            fec_pet: "2026-10-19 10:00:00",
+            fec_ini: "2026-10-19 10:05:00",
+            fecha_fin: "2026-10-19 12:00:00"
+        }]
+    };
+    const res = await fetch(URL_MINISTERIO, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    return res.ok;
+}
+}
+
+    */
     var listaCategorias = [], listaModelos = [], listaUbicaciones = [];
     var idGestorLogueado = null;
     var nomGestorLogueado = null;
