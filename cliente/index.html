@@ -266,25 +266,24 @@ async function cargarRanking() {
     }
 
 }
-    //Numero de registros que tienen solo una reserva
+    //Numero de post hechos con una sola reserva subida
 
-    async function unaReserva() {
+    async function unaReserva(){
         const res = await fetch(URL_MINISTERIO);
-        if (!res.ok) throw new Error("Error GET: " + res.status);
+        if(!res.ok) throw new Error("Error GET: " + res.status);
         const datos = await res.json();
-        let area = document.getElementById("tieneunasolareservas").value;
-        let registros = 0;
+        let totalconunsolareserva = 0;
         datos.forEach(item => {
-            if (parseInt(item.id_area) === area) {
-                item.datos.forEach(reserva => {
-                    if (reserva.f_fin === null) {
-                        registros++;
-                    }
-                });
+            if(item.datos.length === 1){
+                totalconunsolareserva++;
             }
-        });
-        alert("hay " + registros + " registros que tienen una sola reserva");
+        }); 
+        alert("El numero de post hechos con una sola reserva es " + totalconunsolareserva);
     }
+        
+
+
+        
         
 
     async function mediahorasestimadasarea_9() {
