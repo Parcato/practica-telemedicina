@@ -277,15 +277,12 @@ async function cargarRanking() {
         datos.forEach(item => {
             if (parseInt(item.id_area) === area) {
                 item.datos.forEach(reserva => {
-                    if (registros === 0) {
+                    if (reserva.f_fin === null) {
                         registros++;
-                    } else {
-                        registros = 0;
                     }
                 });
             }
         });
-
         alert("hay " + registros + " registros que tienen una sola reserva");
     }
         
