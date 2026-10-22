@@ -283,7 +283,7 @@ async function cargarRanking() {
         if (!res.ok) throw new Error("Error GET: " + res.status);
         const datos = await res.json();
         let area = 9;
-        lettotalHoras = 0;
+        let totalHoras = 0;
         datos.forEach(item => {
             if (parseInt(item.id_area) === area) {
                 item.datos.forEach(reserva => {
