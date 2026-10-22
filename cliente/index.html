@@ -268,18 +268,17 @@ async function cargarRanking() {
 }
     //Numero de post hechos con una sola reserva subida
 
-    async function unaReserva(){
-        const res = await fetch(URL_MINISTERIO);
-        if(!res.ok) throw new Error("Error GET: " + res.status);
-        const datos = await res.json();
-        let totalconunsolareserva = 0;
-        datos.forEach(item => {
-            if(item.datos.length === 1){
-                totalconunsolareserva++;
-            }
-        }); 
-        alert("El numero de post hechos con una sola reserva es " + totalconunsolareserva);
-    }
+ async function unaReserva() {
+    const res = await fetch(URL_MINISTERIO);
+    if (!res.ok) throw new Error("Error GET: " + res.status);
+    const datos = await res.json();
+
+    const totalconunsolareserva = datos.filter(item =>
+        Array.isArray(item.datos) && item.datos.length === 1
+    ).length;
+
+    alert("El número de posts hechos con una sola reserva es " + totalconunsolareserva);
+}
         
 
 
